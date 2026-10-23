@@ -294,9 +294,10 @@ class Stack:
 
 
     def extract_events(self, n_levels=2, sigma=1, dmin=0, vmin=0, vmax=None, elongation_min=None, detection_method='wavelets',
-                       saturation=True):
+                       saturation=True, subtract_median_image=False):
 
-        blobs = self.blobs3d(n_levels=n_levels, sigma=sigma, detection_method=detection_method, saturation=saturation)
+        blobs = self.blobs3d(n_levels=n_levels, sigma=sigma, detection_method=detection_method, saturation=saturation, 
+                             subtract_median_image=subtract_median_image)
         if vmax is None:
             vmax = blobs.size
 
@@ -322,10 +323,11 @@ class Stack:
 
 
     def extract_events_3d_fast_v2(self, n_levels_space=2, n_levels_time=2, sigma=1, dmin=0, vmin=0, vmax=None, elongation_min=None, detection_method='wavelets',
-                       saturation=True):
+                       saturation=True, subtract_median_image=False):
 
         blobs   = self.blobs3d_time_v2(n_levels_space=n_levels_space, n_levels_time = n_levels_time, 
-                                       sigma=sigma, detection_method=detection_method, saturation=saturation)
+                                       sigma=sigma, detection_method=detection_method, saturation=saturation, 
+                                       subtract_median_image=subtract_median_image)
 
         if vmax is None:
             vmax = blobs.size

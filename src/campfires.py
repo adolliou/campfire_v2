@@ -63,14 +63,17 @@ class Stack:
 
     def __init__(self, files=[]):
         self.images = [Image(self, file, idx=i) for i, file in enumerate(files)]
-        self.n_images = len(self.images)
-        self.events = []
-        self.excluded = []
-        self.min = None
-        self.max = None
-        self.mean = None
-        self.variance = None
-        self.relative_variance = None
+        self.n_images               = len(self.images)
+        self.events                 = []
+        self.excluded               = []
+        self.min                    = None
+        self.max                    = None
+        self.mean                   = None
+        self.variance               = None
+        self.relative_variance      = None
+
+        self.median_image           = None
+
 
     def __iter__(self):
         for image in self.images:
@@ -143,26 +146,33 @@ class Stack:
             self.compute_statistics()
         return self.mean
 
-    def blobs3d(self, n_levels=2, sigma=1, detection_method='wavelets', saturation=True):
+    def blobs3d(self, n_levels, sigma, detection_method, saturation, subtract_median_image):
+        median_image        = None
+        if subtract_median_image:
+            median_image        = self.get_median_image()
+
         blobs = []
         for image in tqdm(self, desc="compute blob 2d"):
             blobs.append(
-                image.blobs2d(n_levels=n_levels, sigma=sigma, detection_method=detection_method, saturation=saturation))
+                image.blobs2d(n_levels=n_levels, sigma=sigma, detection_method=detection_method, saturation=saturation, 
+                              median_image=median_image))
         return ma.masked_array(blobs)
 
 
 
 
-    def blobs3d_time_v2(self, n_levels_space=2, n_levels_time = 10, sigma=1, detection_method='wavelets', saturation=True):
+    def blobs3d_time_v2(self, n_levels_space, n_levels_time, sigma, detection_method, saturation, subtract_median_image):
 
+
+        median_image        = None
+        if subtract_median_image:
+            median_image        = self.get_median_image()
         img, hdr = self.images[0].get()
-
-
-
         blobs_space         = []
         for image in tqdm(self, desc="compute blob 3d (space)"):
             blobs_space.append(
-                image.blobs2d(n_levels=n_levels_space, sigma=sigma, detection_method=detection_method, saturation=saturation))
+                image.blobs2d(n_levels=n_levels_space, sigma=sigma, detection_method=detection_method, saturation=saturation, 
+                              median_image=median_image))
         blobs_space_mask            = copy.deepcopy(ma.masked_array(blobs_space).mask)
         del blobs_space
 
@@ -417,6 +427,24 @@ class Stack:
         plt.imshow(~blobs[10].mask, origin="lower")
 
 
+    def get_median_image(self):
+        if self.median_image is not None:
+            img, hdr        = self.images[0].get()
+            datacube        = np.zeros((len(self.images,
+                                             img.shape[0], img.shape[1])),
+                                               dtype=float)
+
+            for ii, image in enumerate(self.images):
+
+                img, hdr                = image.get()
+                datacube[ii, :, :]      = np.copy(img)
+            datacube[datacube < 0]      = np.nan
+            self.median_image           = np.nanmedian(datacube, axis=0)
+            del datacube
+                
+
+        return self.median_image
+
 class Image:
 
     def __init__(self, parent, file, idx=None):
@@ -484,17 +512,23 @@ class Image:
         return np.sqrt(img + self.header['RDNOISE'] ** 2)
 
 
-    def blobs2d(self, sigma=1, n_levels=2, detection_method='wavelets', saturation=True):
+    def blobs2d(self, sigma, n_levels, detection_method, saturation, median_image):
 
         img, hdr = self.get()
 
         data                        = ma.masked_array(img, mask=True)
-
+    
         if detection_method == 'wavelets':
 
             transform = AtrousTransform(scaling_function_class=B3spline)
-            coeffs = transform(img - np.median(img[img > 0]), level=n_levels)
+            if median_image is not None:
+                coeffs = transform(img - median_image, level=n_levels)
+            else:
+                coeffs = transform(img - np.median(img[img > 0]), level=n_levels)
+            
+            
             if saturation:
+                raise ValueError("saturation level is wrong here")
                 gd = np.logical_and(img > 0, img < 3660)  # 3657 photons = 25600(RECHIGH)/7.0(gain)
             else:
                 gd = img > 0
@@ -609,7 +643,6 @@ class Sequence:
         self.detection_method       = detection_method
         self.time_3d                = False
 
-        self.median_image           = None
         self.build_multiplets()
 
     def print_multiplets(self):
@@ -754,22 +787,7 @@ class Sequence:
     def copy(self, stack):
         self.stacks.append(copy.deepcopy(stack))
 
-    def median_image(self):
-        if self.median_image is not None:
-            img, hdr        = self.masterstack.images[0].get()
-            datacube        = np.zeros((len(self.masterstack.images,
-                                             img.shape[0], img.shape[1])),
-                                               dtype=float)
 
-            for ii, image in enumerate(self.masterstack.images):
-
-                img, hdr                = image.get()
-                datacube[ii, :, :]      = np.copy(img)
-            
-            self.median_image           = datacube
-                
-
-        return self.median_image
 
     def inpaint(self, stack, recompute=False, renoise=True):
         if recompute:

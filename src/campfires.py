@@ -706,7 +706,7 @@ class Sequence:
         self.masterstack = self.stacks[self.master]
 
     def extract_events(self, instruments=None, sigma=5, n_levels=2, dmin=0, vmin=0, vmax=None,  elongation_min=0,
-                        saturation=True, compute_excluded=True): 
+                        saturation=True, compute_excluded=True, subtract_median_image=False): 
         """Extract events through the wavelet "A trous" decomposition algorithm on given scales. 
         (see for instance Starck, J. L., & Murtagh, F. 2002, Astronomical Image and Data Analysis (Springer-Verlag)
         Args:
@@ -733,15 +733,15 @@ class Sequence:
             if not compute_excluded:
                 self.stacks[instr].extract_events_fast(sigma=sigma, n_levels=n_levels, dmin=dmin, vmin=vmin, vmax=vmax,
                                                 elongation_min=elongation_min,
-                                                detection_method=self.detection_method, saturation=saturation)
+                                                detection_method=self.detection_method, saturation=saturation, subtract_median_image=subtract_median_image)
             else:
                 self.stacks[instr].extract_events(sigma=sigma, n_levels=n_levels, dmin=dmin, vmin=vmin, vmax=vmax,
                                                 elongation_min=elongation_min,
-                                                detection_method=self.detection_method, saturation=saturation)
+                                                detection_method=self.detection_method, saturation=saturation, subtract_median_image=subtract_median_image)
 
 
     def extract_events_3d_v2(self, instruments=None, sigma=5, n_levels_space=2, n_levels_time=10, dmin=0, vmin=0, vmax=None,  elongation_min=0,
-                    saturation=True, compute_excluded=True): 
+                    saturation=True, compute_excluded=True, subtract_median_image=False): 
         """Extract events through the wavelet "A trous" decomposition algorithm on given scales. 
         (see for instance Starck, J. L., & Murtagh, F. 2002, Astronomical Image and Data Analysis (Springer-Verlag)
         Args:
@@ -772,7 +772,8 @@ class Sequence:
             self.stacks[instr].extract_events_3d_fast_v2(sigma=sigma, n_levels_space=n_levels_space, n_levels_time = n_levels_time, 
                                                          dmin=dmin, vmin=vmin, vmax=vmax,
                                             elongation_min=elongation_min,
-                                            detection_method=self.detection_method, saturation=saturation)
+                                            detection_method=self.detection_method, saturation=saturation, 
+                                            subtract_median_image=subtract_median_image)
 
 
 

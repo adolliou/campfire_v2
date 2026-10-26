@@ -369,7 +369,7 @@ class Stack:
         slices                          = find_objects(regions)
         selection_total                 = np.array(
             [
-                (vmin <= (regions[slices[n]] == n + 1).sum()  <= vmax) & ((dmin < slices[n][0].stop - slices[n][0].start) ) 
+                (vmin <= (regions[slices[n]] == n + 1).sum()  <= vmax) & ((dmin <= slices[n][0].stop - slices[n][0].start) ) 
                 for n in range(len(slices))
                 ]
                 , dtype=bool)
@@ -399,7 +399,7 @@ class Stack:
         slices                          = find_objects(regions)
         selection_total                 = np.array(
             [
-                (vmin <= (regions[slices[n]] == n + 1).sum()  <= vmax) & ((dmin < slices[n][0].stop - slices[n][0].start) ) 
+                (vmin <= (regions[slices[n]] == n + 1).sum()  <= vmax) & ((dmin <= slices[n][0].stop - slices[n][0].start) ) 
                 for n in range(len(slices))
                 ]
                 , dtype=bool)

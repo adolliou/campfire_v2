@@ -209,11 +209,17 @@ class Event:
                 lon1 = (self.xmax - hd1["CRPIX1"] + 1) * hd1["CDELT1"] + hd1["CRVAL1"]
                 lat1 = (self.ymax - hd1["CRPIX2"] + 1) * hd1["CDELT2"] + hd1["CRVAL2"]
             else:
-                lon1 = (self.xmax - hd1["CRPIX1"] + 1) * hd1["CDELT1"] + hd1["CRVAL1"]
-                lat1 = (self.ymax - hd1["CRPIX2"] + 1) * hd1["CDELT2"] + hd1["CRVAL2"]                
+                raise ValueError("MAPPINGR in header but not carrington coordinates.")
+         
             image_coords = transform(x=lon1, y=lat1)
             self.image_coords = float(image_coords[0]), float(image_coords[1])
             self.carrington_coords = lon1, lat1
+        elif "HPLN-TAN" in hd1["CTYPE1"]:
+            lon1 = (self.xmax - hd1["CRPIX1"] + 1) * hd1["CDELT1"] + hd1["CRVAL1"]
+            lat1 = (self.ymax - hd1["CRPIX2"] + 1) * hd1["CDELT2"] + hd1["CRVAL2"] 
+
+            self.image_coords           = float(lon1), float(lat1)
+            self.carrington_coords      = None, None
 
     def ellipse_properties(self):
         """

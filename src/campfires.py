@@ -161,7 +161,7 @@ class Stack:
 
 
 
-    def blobs3d_time_v2(self, n_levels_space, n_levels_time, sigma, detection_method, saturation, subtract_median_image):
+    def blobs3d_time_v2(self, n_levels_space, n_levels_time, sigma_space, sigma_time, detection_method, saturation, subtract_median_image):
 
 
         median_image        = None
@@ -171,7 +171,7 @@ class Stack:
         blobs_space         = []
         for image in tqdm(self, desc="compute blob 3d (space)"):
             blobs_space.append(
-                image.blobs2d(n_levels=n_levels_space, sigma=sigma, detection_method=detection_method, saturation=saturation, 
+                image.blobs2d(n_levels=n_levels_space, sigma=sigma_space, detection_method=detection_method, saturation=saturation, 
                               median_image=median_image))
         blobs_space_mask            = copy.deepcopy(ma.masked_array(blobs_space).mask)
         del blobs_space
@@ -187,7 +187,8 @@ class Stack:
             datacube[ii, :, :,]             = im
             datacube_noise[ii, :, :]        = image.noise(im)
 
-        blobs_time_mask                         = self.blobs1d_time(datacube, datacube_noise, n_levels_time, sigma, saturation, blobs_space_mask)
+        blobs_time_mask                         = self.blobs1d_time(datacube, datacube_noise, n_levels_time, 
+                                                                    sigma_time, saturation, blobs_space_mask)
 
         blobs_total                             = ma.masked_array(datacube, mask=np.logical_or(blobs_space_mask, blobs_time_mask))
         return blobs_total
@@ -322,11 +323,13 @@ class Stack:
 
 
 
-    def extract_events_3d_fast_v2(self, n_levels_space=2, n_levels_time=2, sigma=1, dmin=0, vmin=0, vmax=None, elongation_min=None, detection_method='wavelets',
-                       saturation=True, subtract_median_image=False):
+    def extract_events_3d_fast_v2(self, n_levels_space, n_levels_time, sigma_space, sigma_time, 
+                                  dmin, vmin, vmax, elongation_min, detection_method,
+                                    saturation, subtract_median_image):
 
         blobs   = self.blobs3d_time_v2(n_levels_space=n_levels_space, n_levels_time = n_levels_time, 
-                                       sigma=sigma, detection_method=detection_method, saturation=saturation, 
+                                       sigma_space=sigma_space, sigma_time=sigma_time, 
+                                       detection_method=detection_method, saturation=saturation, 
                                        subtract_median_image=subtract_median_image)
 
         if vmax is None:
@@ -740,7 +743,7 @@ class Sequence:
                                                 detection_method=self.detection_method, saturation=saturation, subtract_median_image=subtract_median_image)
 
 
-    def extract_events_3d_v2(self, instruments=None, sigma=5, n_levels_space=2, n_levels_time=10, dmin=0, vmin=0, vmax=None,  elongation_min=0,
+    def extract_events_3d_v2(self, instruments=None, sigma_space=5, sigma_time=5, n_levels_space=2, n_levels_time=10, dmin=0, vmin=0, vmax=None,  elongation_min=0,
                     saturation=True, compute_excluded=True, subtract_median_image=False): 
         """Extract events through the wavelet "A trous" decomposition algorithm on given scales. 
         (see for instance Starck, J. L., & Murtagh, F. 2002, Astronomical Image and Data Analysis (Springer-Verlag)
@@ -757,8 +760,11 @@ class Sequence:
             compute_excluded (bool, optional): If True, compute events that do not follow the constraints in self.excluded.
             If False, the algorhtm will be significantly faster
         """        
-        self.sigma                  = sigma
+        self.sigma_space            = sigma_space
+        self.sigma_time             = sigma_time
         self.n_levels               = None
+        self.n_sigma                = None
+
         self.n_levels_space         = n_levels_space
         self.n_levels_time          = n_levels_time
 
@@ -769,7 +775,8 @@ class Sequence:
         if type(instruments) is not list:
             instruments = [instruments]
         for instr in instruments:
-            self.stacks[instr].extract_events_3d_fast_v2(sigma=sigma, n_levels_space=n_levels_space, n_levels_time = n_levels_time, 
+            self.stacks[instr].extract_events_3d_fast_v2(sigma_space=sigma_space, sigma_time=sigma_time,
+                                                          n_levels_space=n_levels_space, n_levels_time = n_levels_time, 
                                                          dmin=dmin, vmin=vmin, vmax=vmax,
                                             elongation_min=elongation_min,
                                             detection_method=self.detection_method, saturation=saturation, 

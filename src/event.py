@@ -219,8 +219,7 @@ class Event:
             lat1 = (self.ymax - hd1["CRPIX2"] + 1) * hd1["CDELT2"] + hd1["CRVAL2"] 
 
             self.image_coords           = float(lon1), float(lat1)
-            self.carrington_coords      = None, None
-
+            self.carrington_coords      = float(lon1), float(lat1)
     def ellipse_properties(self):
         """
         Computes the parameters of the elliptic approximation of the event.

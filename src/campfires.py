@@ -854,7 +854,7 @@ class Sequence:
             if self.n_levels is not None:
                 suffix = suffix + f"_sigma{self.sigma}_levels{self.n_levels}_dmin{self.dmin}_elongmin{self.elongation_min}"
             else:
-                suffix = suffix + f"_sigma{self.sigma}_levelsspace{self.n_levels_space}_levelstime{self.n_levels_time}_dmin{self.dmin}_elongmin{self.elongation_min}"
+                suffix = suffix + f"_sspace{self.sigma_space}_stime{self.sigma_time}_levelsspace{self.n_levels_space}_levelstime{self.n_levels_time}_dmin{self.dmin}_elongmin{self.elongation_min}"
 
         else:
             suffix += f"_dmin{self.dmin}"

@@ -160,8 +160,9 @@ class Stack:
 
 
 
-
-    def blobs3d_time_v2(self, n_levels_space, n_levels_time, sigma_space, sigma_time, detection_method, saturation, subtract_median_image):
+    def blobs3d_time_v2(self, n_levels_space, n_levels_time,
+                                  sigma_space, sigma_time, detection_method,
+                                    saturation, subtract_median_image):
 
 
         median_image        = None
@@ -192,6 +193,39 @@ class Stack:
 
         blobs_total                             = ma.masked_array(datacube, mask=np.logical_or(blobs_space_mask, blobs_time_mask))
         return blobs_total
+
+
+
+
+    def blobs3d_time_v2_timeonly(self, n_levels_space, n_levels_time, sigma_space,
+                         sigma_time, detection_method, saturation, subtract_median_image):
+
+
+        img, hdr = self.images[0].get()
+
+        datacube        = np.zeros(
+            ( len(self.images), img.shape[0], img.shape[1],)
+        )
+        datacube_noise  = np.zeros(
+            ( len(self.images), img.shape[0], img.shape[1],)
+        )        
+        for ii, image in enumerate(self.images):
+            im, hdr                         = image.get()
+            datacube[ii, :, :,]             = im
+            datacube_noise[ii, :, :]        = image.noise(im)
+
+        blobs_space_mask                        = np.ones(datacube.shape, dtype=bool)
+        blobs_time_mask                         = self.blobs1d_time(datacube, datacube_noise,
+                                                                     n_levels_time, 
+                                                                    sigma_time, saturation,
+                                                                      blobs_space_mask)
+
+        blobs_total                             = ma.masked_array(datacube, 
+                                                                  mask=np.logical_or(blobs_space_mask, 
+                                                                                     blobs_time_mask))
+        return blobs_total
+
+
 
     def blobs1d_time(self, datacube, datacube_noise, n_levels_time, sigma, saturation, blobs_space_mask):
 
@@ -323,14 +357,63 @@ class Stack:
 
 
 
+    def extract_events_3d_fast_v2_timeonly(self, n_levels_space, n_levels_time,
+                                            sigma_space, sigma_time, 
+                                  dmin, vmin, vmax, elongation_min, detection_method,
+                                    saturation, subtract_median_image):
+
+        blobs   = self.blobs3d_time_v2_timeonly(
+            n_levels_space              = n_levels_space,
+            n_levels_time               = n_levels_time, 
+            sigma_space                 = sigma_space,
+            sigma_time                  = sigma_time, 
+            detection_method            = detection_method,
+            saturation                  = saturation, 
+            subtract_median_image       = subtract_median_image
+            )
+
+        if vmax is None:
+            vmax = blobs.size
+
+        regions, nregions               = label(~blobs.mask)
+        slices                          = find_objects(regions)
+        selection_total                 = np.array(
+            [
+                (vmin <= (regions[slices[n]] == n + 1).sum()  <= vmax) & ((dmin < slices[n][0].stop - slices[n][0].start) ) 
+                for n in range(len(slices))
+                ]
+                , dtype=bool)
+        indexes                 = np.arange(len(slices), dtype="int")
+        indexes                 = indexes[selection_total]
+        slices_                 = tuple([slices[n] for n in range(len(slices)) if selection_total[n]])
+
+        self.events = []
+
+            
+        for ii, s in enumerate(tqdm(slices_, desc="Initialize events (fast mode)")):
+            i           = indexes[ii]
+            blob        = ma.masked_array(blobs.data[s], mask=regions[s] != i + 1)
+            ev          = Event(self, s, blob, i)
+            if ev.ellipse_parameters[0]/ev.ellipse_parameters[1] > elongation_min:
+                self.events.append(ev)
+
+
+
+
+
     def extract_events_3d_fast_v2(self, n_levels_space, n_levels_time, sigma_space, sigma_time, 
                                   dmin, vmin, vmax, elongation_min, detection_method,
                                     saturation, subtract_median_image):
 
-        blobs   = self.blobs3d_time_v2(n_levels_space=n_levels_space, n_levels_time = n_levels_time, 
-                                       sigma_space=sigma_space, sigma_time=sigma_time, 
-                                       detection_method=detection_method, saturation=saturation, 
-                                       subtract_median_image=subtract_median_image)
+        blobs   = self.blobs3d_time_v2(
+            n_levels_space              = n_levels_space,
+            n_levels_time               = n_levels_time, 
+            sigma_space                 = sigma_space,
+            sigma_time                  = sigma_time, 
+            detection_method            = detection_method,
+            saturation                  = saturation, 
+            subtract_median_image       = subtract_median_image
+            )
 
         if vmax is None:
             vmax = blobs.size
@@ -775,12 +858,47 @@ class Sequence:
         if type(instruments) is not list:
             instruments = [instruments]
         for instr in instruments:
-            self.stacks[instr].extract_events_3d_fast_v2(sigma_space=sigma_space, sigma_time=sigma_time,
+            self.stacks[instr].extract_events_3d_fast_v2(
+                sigma_space             = sigma_space,
+                sigma_time              = sigma_time,
+                n_levels_space          = n_levels_space,
+                n_levels_time           = n_levels_time, 
+                dmin                    = dmin,
+                vmin                    = vmin,
+                vmax                    = vmax,
+                elongation_min          = elongation_min,
+                detection_method        = self.detection_method,
+                saturation              = saturation, 
+                subtract_median_image   = subtract_median_image
+                )
+
+
+
+    def extract_events_3d_v2_timeonly(self, instruments=None, sigma_space=5, sigma_time=5, n_levels_space=2, n_levels_time=10, dmin=0, vmin=0, vmax=None,  elongation_min=0,
+                    saturation=True, compute_excluded=True, subtract_median_image=False): 
+      
+        self.sigma_space            = sigma_space
+        self.sigma_time             = sigma_time
+        self.n_levels               = None
+        self.n_sigma                = None
+
+        self.n_levels_space         = n_levels_space
+        self.n_levels_time          = n_levels_time
+
+        self.dmin                   = dmin
+        self.elongation_min         = elongation_min
+        self.time_3d                = True
+        if instruments is None: instruments = [self.master]
+        if type(instruments) is not list:
+            instruments = [instruments]
+        for instr in instruments:
+            self.stacks[instr].extract_events_3d_fast_v2_timeonly(sigma_space=sigma_space, sigma_time=sigma_time,
                                                           n_levels_space=n_levels_space, n_levels_time = n_levels_time, 
                                                          dmin=dmin, vmin=vmin, vmax=vmax,
                                             elongation_min=elongation_min,
                                             detection_method=self.detection_method, saturation=saturation, 
                                             subtract_median_image=subtract_median_image)
+
 
 
 
@@ -853,6 +971,8 @@ class Sequence:
         if self.detection_method == "wavelets":
             if self.n_levels is not None:
                 suffix = suffix + f"_sigma{self.sigma}_levels{self.n_levels}_dmin{self.dmin}_elongmin{self.elongation_min}"
+            elif sigma_space is None:
+                suffix = suffix + f"_timeonly_stime{self.sigma_time}_levelsspace{self.n_levels_space}_levelstime{self.n_levels_time}_dmin{self.dmin}_elongmin{self.elongation_min}"
             else:
                 suffix = suffix + f"_sspace{self.sigma_space}_stime{self.sigma_time}_levelsspace{self.n_levels_space}_levelstime{self.n_levels_time}_dmin{self.dmin}_elongmin{self.elongation_min}"
 

@@ -214,7 +214,7 @@ class Stack:
             datacube[ii, :, :,]             = im
             datacube_noise[ii, :, :]        = image.noise(im)
 
-        blobs_space_mask                        = np.ones(datacube.shape, dtype=bool)
+        blobs_space_mask                        = np.zeros(datacube.shape, dtype=bool)
         blobs_time_mask                         = self.blobs1d_time(datacube, datacube_noise,
                                                                      n_levels_time, 
                                                                     sigma_time, saturation,

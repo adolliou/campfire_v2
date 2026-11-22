@@ -971,7 +971,7 @@ class Sequence:
         if self.detection_method == "wavelets":
             if self.n_levels is not None:
                 suffix = suffix + f"_sigma{self.sigma}_levels{self.n_levels}_dmin{self.dmin}_elongmin{self.elongation_min}"
-            elif sigma_space is None:
+            elif self.sigma_space is None:
                 suffix = suffix + f"_timeonly_stime{self.sigma_time}_levelsspace{self.n_levels_space}_levelstime{self.n_levels_time}_dmin{self.dmin}_elongmin{self.elongation_min}"
             else:
                 suffix = suffix + f"_sspace{self.sigma_space}_stime{self.sigma_time}_levelsspace{self.n_levels_space}_levelstime{self.n_levels_time}_dmin{self.dmin}_elongmin{self.elongation_min}"
